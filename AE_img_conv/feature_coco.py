@@ -42,6 +42,7 @@ x = UpSampling2D((2, 2))(x)
 decoded = Conv2D(3, (3, 3), activation='sigmoid', padding='same')(x)
 
 autoencoder = Model(input_img, decoded)
+ae_filter = Model(input_img, decoded)
 
 print(autoencoder.summary())
 # check point
@@ -51,6 +52,7 @@ os.makedirs(cp_dir, exist_ok=True)
 
 if os.path.isfile(cp_path):
     autoencoder.load_weights(cp_path)
+    ae_filter.load_weights(cp_path)
 
 cpCallback = ModelCheckpoint(cp_path, verbose=0)
 
@@ -67,9 +69,8 @@ if not os.path.isfile(cp_path):
                 )
 
 
-layer_ = [autoencoder.layers[1],autoencoder.layers[3],autoencoder.layers[5]]
-# layer_ = [autoencoder.layers[1],autoencoder.layers[3],autoencoder.layers[5],autoencoder.layers[7],
-#                  autoencoder.layers[9],autoencoder.layers[11]]
+layer_ = [autoencoder.layers[1],autoencoder.layers[3],autoencoder.layers[5],autoencoder.layers[7],
+                 autoencoder.layers[9],autoencoder.layers[11]]
 layer_outputs = [layer.output for layer in layer_]
 activation_model = Model(inputs=autoencoder.input, outputs=layer_outputs)
 
@@ -108,29 +109,69 @@ for layer_name, layer_activation in zip(layer_names, activations):  # Displays t
             channel_image = np.clip(channel_image, 0, 255).astype('uint8')
             # Displays the grid
             display_grid[col * size: (col + 1) * size, row * size: (row + 1) * size] = channel_image
-
     scale = 1. / size
     plt.figure(figsize=(scale * display_grid.shape[1],
                         scale * display_grid.shape[0]))
     plt.title(layer_name)
     plt.grid(False)
-    plt.imshow(display_grid, aspect='equal', cmap='viridis')
-    # plt.imshow(display_grid, aspect='auto', cmap='viridis')
-
+    plt.imshow(display_grid, aspect='equal')     #, cmap='viridis')
 plt.show()
 
-# plot the output from each block
-# for fmap in feature_maps:
-	# plot all 64 maps in an 8x8 squares
-# print(K.int_shape(feature_maps))
-# ix = 1
-# for _ in range(2):
-#     for _ in range(4):
-#         # specify subplot and turn of axis
-#         ax = plt.subplot(2, 4, ix)
-#         plt.imshow(feature_maps[ix-1, :, :, 0])
-#         # plot filter channel in grayscale
-#         # plt.imshow(fmap[0, :, :, ix-1], cmap='gray')
-#         ix += 1
-# # show the figure
-# plt.show()
+
+# -------------------------------------------------
+# Utility function for displaying filters as images
+# -------------------------------------------------
+
+def deprocess_image(x):
+    x -= x.mean()
+    x /= (x.std() + 1e-5)
+    x *= 0.1
+    x += 0.5
+    x = np.clip(x, 0, 1)
+    # x *= 255
+    # x = np.clip(x, 0, 255).astype('uint8')
+    return x
+
+
+# ---------------------------------------------------------------------------------------------------
+# Utility function for generating patterns for given layer starting from empty input image and then
+# applying Stochastic Gradient Ascent for maximizing the response of particular filter in given layer
+# ---------------------------------------------------------------------------------------------------
+
+def generate_pattern(layer_name, filter_index, size=25):
+    layer_output = ae_filter.get_layer(layer_name).output
+    loss = K.mean(layer_output[:, :, :, filter_index])
+    grads = K.gradients(loss, ae_filter.input)[0]
+    grads /= (K.sqrt(K.mean(K.square(grads))) + 1e-5)
+    iterate = K.function([ae_filter.input], [loss, grads])
+    input_img_data = np.random.random((1, size, size, 3)) * 20 + 128.
+    step = 1.
+    for i in range(80):
+        loss_value, grads_value = iterate([input_img_data])
+        input_img_data += grads_value * step
+
+    img = input_img_data[0]
+    return deprocess_image(img)
+
+
+# ------------------------------------------------------------------------------------------
+# Generating convolution layer filters for intermediate layers using above utility functions
+# ------------------------------------------------------------------------------------------
+
+layer_name = 'conv2d_4'
+size = 200
+margin = 5
+results = np.zeros((4 * size + 7 * margin, 8 * size + 7 * margin, 3))
+
+for i in range(4):
+    for j in range(8):
+        filter_img = generate_pattern(layer_name, i + (j * 8), size=size)
+        horizontal_start = i * size + i * margin
+        horizontal_end = horizontal_start + size
+        vertical_start = j * size + j * margin
+        vertical_end = vertical_start + size
+        results[horizontal_start: horizontal_end, vertical_start: vertical_end, :] = filter_img
+
+plt.figure(figsize=(20, 20))
+plt.imshow(results, aspect='equal')
+plt.show()
