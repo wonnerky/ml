@@ -64,6 +64,9 @@ layer_ = [autoencoder.layers[1],autoencoder.layers[3],autoencoder.layers[5]]
 layer_outputs = [layer.output for layer in layer_]
 activation_model = Model(inputs=autoencoder.input, outputs=layer_outputs)
 img = x_test[51].reshape(1,28,28,1)
+fig = plt.figure(figsize=(5,5))
+plt.imshow(img[0,:,:,0],cmap='gray')
+plt.show()
 
 activations = activation_model.predict(img)
 
@@ -81,21 +84,20 @@ for layer_name, layer_activation in zip(layer_names, activations):  # Displays t
     for col in range(n_cols):  # Tiles each filter into a big horizontal grid
         for row in range(images_per_row):
             channel_image = layer_activation[0, :, :, col * images_per_row + row]
-            # channel_image -= channel_image.mean()  # Post-processes the feature to make it visually palatable
-            # channel_image /= (channel_image.std() + 1e-7)
-            # channel_image *= 64
-            # channel_image += 128
-            # channel_image = np.clip(channel_image, 0, 255).astype('uint8')
-            # display_grid[col * size: (col + 1) * size,  # Displays the grid
-            # row * size: (row + 1) * size] = channel_image
-            plt.title(layer_name)
-            plt.imshow(channel_image, aspect='auto', cmap='gray')
-    # scale = 1. / size
-    # plt.figure(figsize=(scale * display_grid.shape[1],
-    #                     scale * display_grid.shape[0]))
-    # plt.title(layer_name)
-    # plt.grid(False)
-    # plt.imshow(display_grid, aspect='auto', cmap='gray')
+            channel_image -= channel_image.mean()  # Post-processes the feature to make it visually palatable
+            channel_image /= (channel_image.std() + 1e-7)
+            channel_image *= 64
+            channel_image += 128
+            channel_image = np.clip(channel_image, 0, 255).astype('uint8')
+            # Displays the grid
+            display_grid[col * size: (col + 1) * size, row * size: (row + 1) * size] = channel_image
+
+    scale = 1. / size
+    plt.figure(figsize=(scale * display_grid.shape[1],
+                        scale * display_grid.shape[0]))
+    plt.title(layer_name)
+    plt.grid(False)
+    plt.imshow(display_grid, aspect='equal', cmap='gray')
     # plt.imshow(display_grid, aspect='auto', cmap='viridis')
 
 plt.show()
