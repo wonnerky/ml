@@ -23,7 +23,7 @@ test_set = train_datagen.flow_from_directory(test_dir,
                                                  target_size=(200,200),
                                                  batch_size=32,
                                                  class_mode='input')
-
+training_set.image_data_generator
 input_img = Input(shape=(200, 200, 3))
 
 x = Conv2D(32, (3, 3), activation='relu', padding='same')(input_img)
@@ -165,7 +165,7 @@ results = np.zeros((4 * size + 7 * margin, 8 * size + 7 * margin, 3))
 
 for i in range(4):
     for j in range(8):
-        filter_img = generate_pattern(layer_name, i + (j * 8), size=size)
+        filter_img = generate_pattern(layer_name, i + j, size=size)
         horizontal_start = i * size + i * margin
         horizontal_end = horizontal_start + size
         vertical_start = j * size + j * margin

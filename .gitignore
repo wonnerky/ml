@@ -1,3 +1,4 @@
 # IntelliJ project files
 .idea
 AE_img_conv/data/
+venv/
