@@ -242,7 +242,9 @@ results = np.zeros((4 * size + 7 * margin, 8 * size + 7 * margin, 3))
 
 for i in range(4):
     for j in range(8):
-        filter_img = generate_pattern(layer_name, i + j, img, size=size)
+        # filter_img = generate_pattern(layer_name, i + j, img, size=size)
+        # input img에 feature map 넣음
+        filter_img = generate_pattern(layer_name, i + j, model.get_layer(layer_name).output, size=size)
         horizontal_start = i * size + i * margin
         horizontal_end = horizontal_start + size
         vertical_start = j * size + j * margin
